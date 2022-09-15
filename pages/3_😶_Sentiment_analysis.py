@@ -291,28 +291,6 @@ def main():
         sen_result = Sentiment_analysis()
         sen_result.to_csv('output/sentiment_result.csv', index=False)
 
-        #with st.spinner("Data Set Split:"):
-            #col1, col2 = st.columns(2)
-            #split_data = st.sidebar.slider("Data Split Ratio", 10, 90, 70, 10)
-            #X_train, X_test = train_test_split(raw_text, test_size=(100 - split_data) / 100, random_state=42)
-
-
-            #with st.spinner("Labeling Train....."):
-                #with st.expander("Train Labeling"):
-                    #sen_result = Sentiment_analysis()
-                    #st.dataframe(sen_result)
-                    #sen_result.to_csv('output/sentiment_result.csv', index=False)
-
-        #with st.expander("TF-IDF"):
-            #Xtext = raw_text['text']
-            #tf = TfidfVectorizer()
-            #textTF = tf.fit_transform(Xtext)
-            #df_TFIDF = TFIDF_word_weight(tf, textTF)
-            #df_TFIDF = pd.DataFrame(df_TFIDF)
-            #df_TFIDF.fillna(0, inplace=True)
-            #st.dataframe(df_TFIDF)
-            #df_TFIDF.to_csv('output/TFIDF_result.csv', index=False)
-
         with st.expander("Klasifikasi Pada dataset Test"):
             dataset_train = pd.read_csv('output/sentiment_result.csv', encoding='utf-8')
             dataset_test = pd.read_csv('output/Test_clean.csv', encoding='utf-8')
@@ -337,9 +315,11 @@ def main():
                 X_test = X[test_index]
                 y_test = y[test_index]
 
-                svf = open('text_tst.txt', 'w')
-                svf.write(str(X_test).replace("   "," "))
-                
+                svtest = open('text_tst.txt', 'w')
+                svtest.write(str(X_test).replace("   "," "))
+                svtrain = open('train_tst.txt', 'w')
+                svtrain.write(str(X_train))
+
                 tf = TfidfVectorizer()
                 X_train = tf.fit_transform(X_train)
                 X_test = tf.transform(X_test)
@@ -388,6 +368,8 @@ def main():
             # st.session_state['sen_result'] = sen_result
             #sen_result.to_csv('output/Train_Sentiment.csv')
 
+            #Make new Dataframe
+            result_df = pd.DataFrame()
         with st.expander("Tweets Sentiment and Emotion Visualize"):
             st.sidebar.markdown("Sentiment and Emotion Plot")
 
