@@ -292,8 +292,6 @@ def main():
         sen_result.to_csv('output/sentiment_result.csv', index=False)
 
         with st.expander("Klasifikasi Pada dataset Test"):
-            dataset_train = pd.read_csv('output/sentiment_result.csv', encoding='utf-8')
-            dataset_test = pd.read_csv('output/Test_clean.csv', encoding='utf-8')
             k_value = get_nilai_K()
 
             new_df = sen_result.copy()
@@ -315,12 +313,9 @@ def main():
                 X_test = X[test_index]
                 y_test = y[test_index]
 
-                svtest = open('text_tst.txt', 'w')
-                svtest.write(str(X_test).replace("   "," "))
-    
-                svtrain = open('train_tst.txt', 'w')
-                svtrain.write(str(X_train))
-
+                svf = open('text_tst.txt', 'w')
+                svf.write(str(X_test).replace("   "," "))
+                
                 tf = TfidfVectorizer()
                 X_train = tf.fit_transform(X_train)
                 X_test = tf.transform(X_test)
@@ -369,8 +364,6 @@ def main():
             # st.session_state['sen_result'] = sen_result
             #sen_result.to_csv('output/Train_Sentiment.csv')
 
-            #Make new Dataframe
-            result_df = pd.DataFrame()
         with st.expander("Tweets Sentiment and Emotion Visualize"):
             st.sidebar.markdown("Sentiment and Emotion Plot")
 
