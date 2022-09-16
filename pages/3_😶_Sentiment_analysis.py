@@ -317,6 +317,7 @@ def main():
 
                 svtest = open('text_tst.txt', 'w')
                 svtest.write(str(X_test).replace("   "," "))
+    
                 svtrain = open('train_tst.txt', 'w')
                 svtrain.write(str(X_train))
 
