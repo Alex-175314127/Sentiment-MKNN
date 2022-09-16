@@ -172,6 +172,11 @@ def download_Sentiment_result(Text):
     href = f'<a download="{newFile}" href="data:text/csv;base64,{b64}">📥Download .csv</a>'
     st.markdown(href2, unsafe_allow_html=True)
     st.markdown(href, unsafe_allow_html=True)
+    
+def sub(x):
+    mask = [i for i,y in enumerate(x) if np.isnan(y)]
+    x[mask] = [x + 1 for x in range(len(mask))] # apply ANY transformation you need to x
+    return x
 
 
 def main():
@@ -313,8 +318,15 @@ def main():
                 X_test = X[test_index]
                 y_test = y[test_index]
 
-                svf = open('text_tst.txt', 'w')
-                svf.write(str(X_test).replace("   "," "))
+                svX = open('output/ResultX.txt', 'w')
+                svX.write ('\n'.join(str(item) for item in X_train).replace("   "," "))
+                
+                svf = open('output/ResultX.txt', 'a')
+                sv_text = '\n'.join(str(item) for item in X_test).replace("   "," ")
+                svf.write(sv_text)
+                
+                svY = open ('output/y_train.txt', 'w')
+                svY.write('\n'.join(str(item) for item in y_train))
                 
                 tf = TfidfVectorizer()
                 X_train = tf.fit_transform(X_train)
@@ -341,7 +353,7 @@ def main():
             
             knn_pred = pd.read_csv('output/MKNN_prediction.txt', names=['Sentiment'])
             jarak_pred = pd.read_csv('output/jarak_ttg.txt', names=['Distance'], sep='-', error_bad_lines=False)
-            text_test = pd.read_csv('text_tst.txt', names=['text'])
+            text_test = pd.read_csv('output/text_tst.txt', names=['text'])
             text_test = text_test.join(knn_pred)
             text_test = text_test.join(jarak_pred)
             st.dataframe(text_test)
@@ -364,11 +376,19 @@ def main():
             # st.session_state['sen_result'] = sen_result
             #sen_result.to_csv('output/Train_Sentiment.csv')
 
-        with st.expander("Tweets Sentiment and Emotion Visualize"):
+        with st.expander("Tweets Sentiment Visualize"):
             st.sidebar.markdown("Sentiment and Emotion Plot")
-
+            sen_y_train = pd.read_csv('output/y_train.txt', names=['Sentiment'])
+            text_list = pd.read_csv('output/ResultX.txt', names=['text'])
+            sen_y_test = pd.read_csv('output/MKNN_prediction.txt', names=['Sentiment'])
+            new_senti = pd.concat([sen_y_train, sen_y_test], ignore_index=True)
+            new_df = text_list.join(new_senti)
+            #new_df = new_df.append(sen_y_test[['Sentiment']])
+            st.dataframe(new_df)
+            svd = open('test_vss.txt', 'w')
+            #svd.write(str(sen_y_test))
             # emotion_list = sen_result['Emotion'].unique().tolist()
-            sen_list = sen_result['Sentiment'].unique().tolist()
+            #sen_list = sen_result['Sentiment'].unique().tolist()
             # emotion_list.extend(sen_list)
 
             # Dalam Setiap sentiment dan emosi terdapat :
