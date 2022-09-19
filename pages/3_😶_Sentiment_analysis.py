@@ -305,9 +305,10 @@ def main():
             fold_i = 1
             combo_value = {3:"3 Fold", 5:'5 Fold', 7:'7 Fold', 10:'10 Fold'}
             fold_n = st.sidebar.selectbox('Nilai Fold', options=combo_value.keys(), format_func=lambda x:combo_value[x])
-            sum_accuracy = 0
+            sum_accuracy, sum_precision,sum_recall,sum_error = 0, 0, 0, 0
             kfold = KFold(fold_n, shuffle=True, random_state=33)
             res, fl = [], []
+            pr_result, rc_result, error_result = [], [], []
             #st.write("X = ", X.shape)
             for train_index, test_index in stqdm(kfold.split(X)):
                 #st.write("Fold : ", fold_i)
@@ -335,13 +336,25 @@ def main():
                 clf = ModifiedKNN(k=k_value['K'])
                 clf.fit(X_train, y_train)
                 pred, jarak = clf.predict(X_test)
+                
+                Cmatrix = confusion_matrix(y_test, pred)
+                tn,fp,fn,tp = Cmatrix.ravel()
+                accuracy = (tn+tp)/(tn+fp+fn+tp)*100
 
-                acc = accuracy_score(y_test, pred)*100
-                pr_score = precision_score(y_test, pred, average='micro')
-                sum_accuracy += acc
-                #st.write("Accuracy :", str("%.4f" % acc)+'%')
+                pr_score = tp / (fp+tp)*100
+                rc_score = tp /(fn+tp)*100
+                ferror_score = 2 * ((pr_score*rc_score) / (pr_score+rc_score))
+                
+                sum_accuracy += accuracy
+                sum_precision += pr_score
+                sum_recall += rc_score
+                sum_error += ferror_score
+                
                 fold_i += 1
-                res.append(acc)
+                res.append(accuracy)
+                pr_result.append(pr_score)
+                rc_result.append(rc_score)
+                error_result.append(ferror_score)
 
             with open("output/MKNN_prediction.txt", "w") as f:
                 mknn_predited_label ='\n'.join(str(item) for item in pred)
@@ -352,7 +365,7 @@ def main():
                 g.write(mknn_distance)
             
             knn_pred = pd.read_csv('output/MKNN_prediction.txt', names=['Sentiment'])
-            jarak_pred = pd.read_csv('output/jarak_ttg.txt', names=['Distance'], sep='-', error_bad_lines=False)
+            jarak_pred = pd.read_csv('output/jarak_ttg.txt', names=['Distance'], sep='-')
             text_test = pd.read_csv('output/text_tst.txt', names=['text'])
             text_test = text_test.join(knn_pred)
             text_test = text_test.join(jarak_pred)
@@ -364,17 +377,12 @@ def main():
             avg_acc = sum_accuracy/fold_n
             maxs = max(res)
             mins = min(res)
-            res_df = pd.DataFrame({'K Fold':fl, 'Accuracy': res, 'Precison':pr_score})
+            res_df = pd.DataFrame({'K Fold':fl, 'Accuracy': res, 'Precison':pr_result, 'Recall':rc_result, 'f1 error':error_result})
             st.table(res_df)
             st.write("Avearge accuracy : ", str("%.4f" % avg_acc)+'%')
             st.write("Max Score : ",str(maxs),"in Fold : ", str(res.index(maxs)+1))
             st.write("Min Score : ",str(mins), "in Fold : ", str(res.index(mins)+1))
-        
-            # sen_result['Emotion'] = Emotion_Analysis(sen_result['text'].to_list())
-            # sen_result['Emotion'] = sen_result.Emotion.apply(lambda x: x['label'])
-            # st.dataframe(sen_result)
-            # st.session_state['sen_result'] = sen_result
-            #sen_result.to_csv('output/Train_Sentiment.csv')
+            st.line_chart(res_df[['Accuracy', 'Precison', 'Recall', 'f1 error']])
 
         with st.expander("Tweets Sentiment Visualize"):
             st.sidebar.markdown("Sentiment and Emotion Plot")
@@ -383,8 +391,8 @@ def main():
             sen_y_test = pd.read_csv('output/MKNN_prediction.txt', names=['Sentiment'])
             new_senti = pd.concat([sen_y_train, sen_y_test], ignore_index=True)
             new_df = text_list.join(new_senti)
+            sen_list = new_df['Sentiment'].unique().tolist()
             #new_df = new_df.append(sen_y_test[['Sentiment']])
-            st.dataframe(new_df)
             svd = open('test_vss.txt', 'w')
             #svd.write(str(sen_y_test))
             # emotion_list = sen_result['Emotion'].unique().tolist()
@@ -396,24 +404,20 @@ def main():
             # 2. Document of emotions
             # 3. Extract Keyword
 
-            sentiment = sen_result['Sentiment'].value_counts()
+            sentiment = new_df['Sentiment'].value_counts()
             sentiment = pd.DataFrame({'Sentiment': sentiment.index, 'Tweets': sentiment.values})
-            # emotions = sen_result['Emotion'].value_counts()
-            # emotions = pd.DataFrame({'Emotion': emotions.index, 'Tweets': emotions.values})
-            # pl = st.sidebar.radio('Tweets visual of ...', ('Sentiment', 'Emotion'))
-            # if pl == "Sentiment":
             select = st.sidebar.selectbox("Visual of Tweets Sentiment", ['Histogram', 'Wordcloud', 'Pie Chart'],
                                             key=0)
             if select == "Wordcloud":
-                ch = st.sidebar.selectbox("Sentiment", sen_list, key=0)
+                ch = st.sidebar.selectbox("Sentiment", ("Positive, Negative"))
                 if ch == 'Positive':
-                    pos_list = sen_result[sen_result['Sentiment'] == 'Positive']['text'].tolist()
+                    pos_list = new_df[new_df['Sentiment'] == 'Positive']['text'].tolist()
                     pos_docx = ' '.join(pos_list)
                     keyword_pos = extract_keyword(pos_docx)
                     visual_WordCould(pos_docx)
                     plot_most_common_word(keyword_pos, "Positive")
                 else:
-                    neg_list = sen_result[sen_result['Sentiment'] == 'Negative']['text'].tolist()
+                    neg_list = new_df[new_df['Sentiment'] == 'Negative']['text'].tolist()
                     neg_docx = ' '.join(neg_list)
                     keyword_neg = extract_keyword(neg_docx)
                     visual_WordCould(neg_docx)
