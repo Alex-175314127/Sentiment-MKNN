@@ -10,6 +10,7 @@ from more_itertools import split_at
 from heapq import nlargest as nMax
 from heapq import nsmallest as nMin
 #X, y = load_iris(return_X_y=True)
+from sklearn.neighbors import NearestNeighbors
 
 df = pd.read_csv('output/Clean_text_Sentiment.csv')
 X = df['text']

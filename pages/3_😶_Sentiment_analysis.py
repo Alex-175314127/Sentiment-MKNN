@@ -297,7 +297,7 @@ def main():
         sen_result.to_csv('output/sentiment_result.csv', index=False)
 
         with st.expander("Klasifikasi Pada dataset Test"):
-            k_value = get_nilai_K()
+            k_value = st.sidebar.slider('Nilai K ',0,25,3)
 
             new_df = sen_result.copy()
             X = new_df['text'].values
@@ -333,7 +333,7 @@ def main():
                 X_train = tf.fit_transform(X_train)
                 X_test = tf.transform(X_test)
 
-                clf = ModifiedKNN(k=k_value['K'])
+                clf = ModifiedKNN(k=k_value)
                 clf.fit(X_train, y_train)
                 pred, jarak = clf.predict(X_test)
                 
@@ -360,7 +360,7 @@ def main():
                 mknn_predited_label ='\n'.join(str(item) for item in pred)
                 f.write(mknn_predited_label)
             with open('output/jarak_ttg.txt', 'w') as g:
-                jarak = [nMin(k_value['K'],map(float,i)) for i in jarak]
+                jarak = [nMin(k_value,map(float,i)) for i in jarak]
                 mknn_distance = '\n'.join(str(ls) for ls in jarak)
                 g.write(mknn_distance)
             
