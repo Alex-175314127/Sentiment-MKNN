@@ -29,6 +29,7 @@ nilai_k = 3
 clf = ModifiedKNN(k=nilai_k)
 clf.fit(X_train, y_train)
 predict, jarak =  clf.predict(X_test)
+print(X_train)
 
 y_test = y_test.apply(lambda x: 1 if 'Positive' else 0)
 acc = accuracy_score(y_test, predict)*100
