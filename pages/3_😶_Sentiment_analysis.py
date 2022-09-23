@@ -293,9 +293,12 @@ def main():
                 raw_text.to_csv('output/Clean_text.csv')
 
         #Train Sentiment labeling
-        sen_result = Sentiment_analysis()
-        sen_result.to_csv('output/sentiment_result.csv', index=False)
+        with st.expander("Train Labeling"):
+            sen_result = Sentiment_analysis()
+            st.dataframe(sen_result)
+            sen_result.to_csv('output/sentiment_result.csv', index=False)
 
+        # K Fold cross validation & MKNN
         with st.expander("Klasifikasi Pada dataset Test"):
             k_value = st.sidebar.slider('Nilai K ',0,25,3)
 
@@ -309,7 +312,8 @@ def main():
             kfold = KFold(fold_n, shuffle=True, random_state=33)
             res, fl = [], []
             pr_result, rc_result, error_result = [], [], []
-            #st.write("X = ", X.shape)
+            
+            # K-Fold
             for train_index, test_index in stqdm(kfold.split(X)):
                 #st.write("Fold : ", fold_i)
                 fl.append(fold_i)
@@ -319,24 +323,26 @@ def main():
                 X_test = X[test_index]
                 y_test = y[test_index]
 
+                #Save Train and Test dataset
                 svX = open('output/ResultX.txt', 'w')
                 svX.write ('\n'.join(str(item) for item in X_train).replace("   "," "))
-                
                 svf = open('output/ResultX.txt', 'a')
                 sv_text = '\n'.join(str(item) for item in X_test).replace("   "," ")
                 svf.write(sv_text)
-                
                 svY = open ('output/y_train.txt', 'w')
                 svY.write('\n'.join(str(item) for item in y_train))
                 
+                #TFIDF
                 tf = TfidfVectorizer()
                 X_train = tf.fit_transform(X_train)
                 X_test = tf.transform(X_test)
-
+                
+                # Algorithm
                 clf = ModifiedKNN(k=k_value)
                 clf.fit(X_train, y_train)
                 pred, jarak = clf.predict(X_test)
                 
+                # Confusion Matrix
                 Cmatrix = confusion_matrix(y_test, pred)
                 tn,fp,fn,tp = Cmatrix.ravel()
                 accuracy = (tn+tp)/(tn+fp+fn+tp)*100
@@ -373,7 +379,6 @@ def main():
             new_frame = pd.DataFrame(X_test)
             new_frame = new_frame.join(knn_pred)
             
-
             avg_acc = sum_accuracy/fold_n
             maxs = max(res)
             mins = min(res)
@@ -393,16 +398,6 @@ def main():
             new_df = text_list.join(new_senti)
             sen_list = new_df['Sentiment'].unique().tolist()
             #new_df = new_df.append(sen_y_test[['Sentiment']])
-            svd = open('test_vss.txt', 'w')
-            #svd.write(str(sen_y_test))
-            # emotion_list = sen_result['Emotion'].unique().tolist()
-            #sen_list = sen_result['Sentiment'].unique().tolist()
-            # emotion_list.extend(sen_list)
-
-            # Dalam Setiap sentiment dan emosi terdapat :
-            # 1. List of Emotions
-            # 2. Document of emotions
-            # 3. Extract Keyword
 
             sentiment = new_df['Sentiment'].value_counts()
             sentiment = pd.DataFrame({'Sentiment': sentiment.index, 'Tweets': sentiment.values})
@@ -429,7 +424,6 @@ def main():
             else:
                 fig = px.pie(sentiment, values='Tweets', names='Sentiment')
                 st.plotly_chart(fig)
-
 
 if __name__ == "__main__":
     main()
