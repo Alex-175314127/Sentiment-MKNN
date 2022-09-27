@@ -18,7 +18,10 @@ def get_neighbors(train, test_row, num_neighbors):
 		dist = euclidean_distance(test_row, train_row)
 		distances.append((train_row, dist))
 	distances.sort(key=lambda tup: tup[1])
-	return [distances[i][0] for i in range(num_neighbors)]
+	neighbors = []
+	for i in range(num_neighbors):
+		neighbors.append(distances[i][0])
+	return neighbors
 
 # Test distance function
 dataset = [[2.7810836,2.550537003,0],
@@ -45,12 +48,13 @@ X_train = tf.fit_transform(X_train)
 X_test = tf.transform(X_test)
 y_train = enc.fit_transform(y_train)
 
-
 #neighbors = get_neighbors(dataset, dataset[0], 3)
 #for neighbor in neighbors:
 	#print(neighbor)
 
-neighbors = get_neighbors(X_train, X_test, 3)
+neighbors = get_neighbors(X_train, X_test[0], 3)
+ts = 0
 for neighbor in neighbors:
-    print(neighbor)
+    ts += neighbor
 
+print(ts)
