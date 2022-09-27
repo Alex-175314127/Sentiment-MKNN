@@ -1,26 +1,56 @@
-import altair as alt
+# Example of getting neighbors for an instance
+from math import sqrt
 import pandas as pd
-import streamlit as st
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.metrics.pairwise import euclidean_distances
 
-df = pd.DataFrame(
-    {
-        'Duration': [f"{d} Days" for d in [120, 60, 30, 14, 7]],
-        'Bradley Beal': [10,20,30,40,50],
-        'Steven Adams': [30,10,50,90,70]
-    },
-    columns=['Duration', 'Bradley Beal', 'Steven Adams']
-)
+# calculate the Euclidean distance between two vectors
+def euclidean_distance(row1, row2):
+    return euclidean_distances(row1,row2)
 
-st.write(df)
+# Locate the most similar neighbors
+def get_neighbors(train, test_row, num_neighbors):
+	distances = []
+	for train_row in train:
+		dist = euclidean_distance(test_row, train_row)
+		distances.append((train_row, dist))
+	distances.sort(key=lambda tup: tup[1])
+	return [distances[i][0] for i in range(num_neighbors)]
 
-st.markdown("Make a long form dataframe: https://altair-viz.github.io/user_guide/data.html#long-form-vs-wide-form-data")
+# Test distance function
+dataset = [[2.7810836,2.550537003,0],
+	[1.465489372,2.362125076,0],
+	[3.396561688,4.400293529,0],
+	[1.38807019,1.850220317,0],
+	[3.06407232,3.005305973,0],
+	[7.627531214,2.759262235,1],
+	[5.332441248,2.088626775,1],
+	[6.922596716,1.77106367,1],
+	[8.675418651,-0.242068655,1],
+	[7.673756466,3.508563011,1]]
 
-df = df.melt('Duration', var_name='name', value_name='value')
-st.write(df)
+df = pd.read_csv('output/Clean_text_Sentiment.csv')
+X = df['text']
+y = df['Sentiment']
 
-chart = alt.Chart(df).mark_line().encode(
-  x=alt.X('Duration:N'),
-  y=alt.Y('value:Q'),
-  color=alt.Color("name:N")
-).properties(title="Herld")
-st.altair_chart(chart, use_container_width=True)
+enc = LabelEncoder()
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+tf = TfidfVectorizer()
+X_train = tf.fit_transform(X_train)
+X_test = tf.transform(X_test)
+y_train = enc.fit_transform(y_train)
+
+
+#neighbors = get_neighbors(dataset, dataset[0], 3)
+#for neighbor in neighbors:
+	#print(neighbor)
+
+neighbors = get_neighbors(X_train, X_test, 3)
+for neighbor in neighbors:
+    print(neighbor)
+

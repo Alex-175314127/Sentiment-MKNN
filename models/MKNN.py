@@ -1,6 +1,5 @@
 import pandas as pd
 from sklearn.metrics.pairwise import euclidean_distances
-import streamlit as st
 
 
 # method untuk mencari tetangga terdekat

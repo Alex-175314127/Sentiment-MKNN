@@ -1,5 +1,6 @@
 import PIL.Image as Image
 import numpy as np
+import pathlib
 from numpy import mean
 import streamlit as st
 
@@ -47,11 +48,8 @@ def Sentiment_analysis():
     sia1B.lexicon.clear()
 
     # Read custom Lexicon Bahasa Indonesia
-    with open('data/lexicon_sentimen_negatif.txt') as f:
-        data1A = f.read()
-    with open('data/lexicon_sentimen_positif.txt') as f:
-        data1B = f.read()
-
+    data1A = pathlib.Path('data/lexicon_sentimen_negatif.txt').read_text()
+    data1B = pathlib.Path('data/lexicon_sentimen_positif.txt').read_text()
     # convert lexicon to dictonary
     insetNeg = json.loads(data1A)
     insetPos = json.loads(data1B)
@@ -71,10 +69,7 @@ def Sentiment_analysis():
 
     with open('output/Sentiment-result.txt', 'w+') as f:
         for tweet in tweets:
-            if is_positive_inset(tweet):
-                label = "Positive"
-            else:
-                label = "Negative"
+            label = "Positive" if is_positive_inset(tweet) else "Negative"
             f.write(str(label + "\n"))
 
     sen = pd.read_csv('output/Sentiment-result.txt', names=['Sentiment'])
@@ -108,23 +103,21 @@ def TFIDF_word_weight(vect, word_weight):
         doc = slice(indptr[i], indptr[i + 1])
         count, idx = data[doc], indices[doc]
         feature = feature_name[idx]
-        word_weght_dict = dict({k: v for k, v in zip(feature, count)})
+        word_weght_dict = dict(dict(zip(feature, count)))
         word_weght_list.append(word_weght_dict)
     return word_weght_list
 
 
 # Extract the most common word in each emotion
 def extract_keyword(Text, num=50):
-    tokens = [i for i in Text.split()]
+    tokens = list(Text.split())
     most_common_tokens = Counter(tokens).most_common(num)
     return dict(most_common_tokens)
 
 #Get Nilai K
 def get_nilai_K():
-    params = dict()
     K = st.sidebar.slider("Nilai K :", 1, 25, value=3)
-    params['K'] = K
-    return params
+    return {'K': K}
 
 
 # Visualize Keuyword with WorldCloud
@@ -152,32 +145,14 @@ timestr = time.strftime("%Y%m%d-%H%M%S")
 #Download Preprocessing Result
 def download_result(Text):
     st.markdown("### Download File ###")
-    newFile = "Clean_dataset_{}_.csv".format(timestr)
-    newFile2 = "Clean_dataset_{}_.txt".format(timestr)
+    newFile = f"Clean_dataset_{timestr}_.csv"
+    newFile2 = f"Clean_dataset_{timestr}_.txt"
     save_df = Text.to_csv(index=False)
     b64 = base64.b64encode(save_df.encode()).decode()
     href2 = f'<a download="{newFile2}" href="data:text/txt;base64,{b64}">🔰Download .txt</a>'
     href = f'<a download="{newFile}" href="data:text/csv;base64,{b64}">🔰Download .csv</a>'
     st.markdown(href2, unsafe_allow_html=True)
     st.markdown(href, unsafe_allow_html=True)
-
-
-def download_Sentiment_result(Text):
-    st.markdown("### Download File ###")
-    newFile = "Sentiment_Result_{}_.csv".format(timestr)
-    newFile2 = "Sentiment_Result_{}_.txt".format(timestr)
-    save_df = Text.to_csv(index=False)
-    b64 = base64.b64encode(save_df.encode()).decode()
-    href2 = f'<a download="{newFile2}" href="data:text/txt;base64,{b64}">📥Download .txt</a>'
-    href = f'<a download="{newFile}" href="data:text/csv;base64,{b64}">📥Download .csv</a>'
-    st.markdown(href2, unsafe_allow_html=True)
-    st.markdown(href, unsafe_allow_html=True)
-    
-def sub(x):
-    mask = [i for i,y in enumerate(x) if np.isnan(y)]
-    x[mask] = [x + 1 for x in range(len(mask))] # apply ANY transformation you need to x
-    return x
-
 
 def main():
     #Page Config
@@ -255,7 +230,7 @@ def main():
         raw_text = load_data()
 
         file_details = {"Filename": df_file.name, "Filesize": df_file.size, "Filetype": df_file.type}
-        st.success(str(raw_text.shape[0]) + ' Dataset Loaded')
+        st.success(f'{str(raw_text.shape[0])} Dataset Loaded')
         st.write(file_details)
 
         # Show Dataset
@@ -312,7 +287,7 @@ def main():
             kfold = KFold(fold_n, shuffle=True, random_state=33)
             res, fl = [], []
             pr_result, rc_result, error_result = [], [], []
-            
+
             # K-Fold
             for train_index, test_index in stqdm(kfold.split(X)):
                 #st.write("Fold : ", fold_i)
@@ -331,17 +306,17 @@ def main():
                 svf.write(sv_text)
                 svY = open ('output/y_train.txt', 'w')
                 svY.write('\n'.join(str(item) for item in y_train))
-                
+
                 #TFIDF
                 tf = TfidfVectorizer()
                 X_train = tf.fit_transform(X_train)
                 X_test = tf.transform(X_test)
-                
+
                 # Algorithm
                 clf = ModifiedKNN(k=k_value)
                 clf.fit(X_train, y_train)
                 pred, jarak = clf.predict(X_test)
-                
+
                 # Confusion Matrix
                 Cmatrix = confusion_matrix(y_test, pred)
                 tn,fp,fn,tp = Cmatrix.ravel()
@@ -350,12 +325,12 @@ def main():
                 pr_score = tp / (fp+tp)*100
                 rc_score = tp /(fn+tp)*100
                 ferror_score = 2 * ((pr_score*rc_score) / (pr_score+rc_score))
-                
+
                 sum_accuracy += accuracy
                 sum_precision += pr_score
                 sum_recall += rc_score
                 sum_error += ferror_score
-                
+
                 fold_i += 1
                 res.append(accuracy)
                 pr_result.append(pr_score)
@@ -369,7 +344,7 @@ def main():
                 jarak = [nMin(k_value,map(float,i)) for i in jarak]
                 mknn_distance = '\n'.join(str(ls) for ls in jarak)
                 g.write(mknn_distance)
-            
+
             knn_pred = pd.read_csv('output/MKNN_prediction.txt', names=['Sentiment'])
             jarak_pred = pd.read_csv('output/jarak_ttg.txt', names=['Distance'], sep='-')
             text_test = pd.read_csv('output/text_tst.txt', names=['text'])
@@ -378,7 +353,7 @@ def main():
             st.dataframe(text_test)
             new_frame = pd.DataFrame(X_test)
             new_frame = new_frame.join(knn_pred)
-            
+
             avg_acc = sum_accuracy/fold_n
             maxs = max(res)
             mins = min(res)
