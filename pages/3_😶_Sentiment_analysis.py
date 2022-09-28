@@ -119,7 +119,6 @@ def get_nilai_K():
     K = st.sidebar.slider("Nilai K :", 1, 25, value=3)
     return {'K': K}
 
-
 # Visualize Keuyword with WorldCloud
 def visual_WordCould(Text):
     mask = np.array(Image.open('data/mask.jpg'))
@@ -130,13 +129,11 @@ def visual_WordCould(Text):
     plt.axis('off')
     st.pyplot(fig)
 
-
 # Visualize Keyword with plot
 def plot_most_common_word(mydict, emotion_name):
     df_emotion = pd.DataFrame(mydict.items(), columns=['token', 'count'])
     fig = px.bar(df_emotion, x='token', y='count', color='token', height=500, labels=emotion_name)
     st.plotly_chart(fig)
-
 
 #############################################################################################################
 
@@ -316,6 +313,7 @@ def main():
                 clf = ModifiedKNN(k=k_value)
                 clf.fit(X_train, y_train)
                 pred, jarak = clf.predict(X_test)
+                neigbor_index = clf.get_neigbors(X_test)
 
                 # Confusion Matrix
                 Cmatrix = confusion_matrix(y_test, pred)
@@ -344,12 +342,16 @@ def main():
                 jarak = [nMin(k_value,map(float,i)) for i in jarak]
                 mknn_distance = '\n'.join(str(ls) for ls in jarak)
                 g.write(mknn_distance)
+            with open('output/index_ttg.txt', 'w') as j:
+                j.write('\n'.join(str(a) for a in neigbor_index))
 
             knn_pred = pd.read_csv('output/MKNN_prediction.txt', names=['Sentiment'])
             jarak_pred = pd.read_csv('output/jarak_ttg.txt', names=['Distance'], sep='-')
             text_test = pd.read_csv('output/text_tst.txt', names=['text'])
+            index_pred = pd.read_csv('output/index_ttg.txt', names=['Neigbor'])
             text_test = text_test.join(knn_pred)
             text_test = text_test.join(jarak_pred)
+            text_test = text_test.join(index_pred)
             st.dataframe(text_test)
             new_frame = pd.DataFrame(X_test)
             new_frame = new_frame.join(knn_pred)

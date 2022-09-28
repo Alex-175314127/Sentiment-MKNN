@@ -29,14 +29,14 @@ nilai_k = 3
 clf = ModifiedKNN(k=nilai_k)
 clf.fit(X_train, y_train)
 predict, jarak =  clf.predict(X_test)
-print(X_train)
+#print(X_train)
 
 y_test = y_test.apply(lambda x: 1 if 'Positive' else 0)
 acc = accuracy_score(y_test, predict)*100
-print("ACC :",acc)
+#print("ACC :",acc)
 
 #print(predict)
-print("XTrain :",X_train.shape);print("XTest",X_test.shape);print("yTrain",y_train.shape);print("ytest:",y_test.shape)
+#print("XTrain :",X_train.shape);print("XTest",X_test.shape);print("yTrain",y_train.shape);print("ytest:",y_test.shape)
 #jarak = [x for l in jarak for x in l]
 jarak = [nMin(nilai_k,map(float,i)) for i in jarak]
     
@@ -44,4 +44,10 @@ with open('jarak tetangga.txt', 'w') as f, open('label pred.txt', 'w') as g:
     f.write('\n'.join(str(ls) for ls in jarak))
     g.write(str(predict))
 
-print('\n'.join(str(el) for el in jarak))
+#print('\n'.join(str(el) for el in jarak))
+
+neigbor_index = clf.get_neigbors(X_test)
+print("index Tetangga = ", neigbor_index)
+
+svN = open('output/test_index.txt', 'w')
+svN.write('\n'.join(str(a) for a in neigbor_index))

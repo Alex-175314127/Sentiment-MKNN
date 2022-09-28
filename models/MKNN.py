@@ -2,7 +2,6 @@ import pandas as pd
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.neighbors import NearestNeighbors
 
-
 # method untuk mencari tetangga terdekat
 def tetangga_terdekat(k):
     neigbor = {}
@@ -98,8 +97,9 @@ class ModifiedKNN(object):
 
         return pred_label, distances
 
-    def get_neigbors(self, train_X, test_X, k_value):
-        self.k = k_value
-        self.X_train = train_X
+    def get_neigbors(self, test_X):
+        k_value = self.k
+        train_X = self.X_train
         clf = NearestNeighbors(n_neighbors=k_value).fit(train_X)
-        distance, indicated = clf.kneigbors(test_X)
+        neigbor_index = clf.kneighbors(test_X, return_distance=False)
+        return neigbor_index
