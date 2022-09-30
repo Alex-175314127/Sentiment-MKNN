@@ -3,6 +3,7 @@ import numpy as np
 import pathlib
 from numpy import mean
 import streamlit as st
+import re
 
 import neattext.functions as nfx
 from nltk.tokenize import word_tokenize
@@ -79,18 +80,6 @@ def Sentiment_analysis():
     df.to_csv('CleanText_Sentiment.csv', index=False)
     return df
 
-
-############################################################################################
-### EMOTION ANALYSIS ###
-#@st.cache
-#def Emotion_Analysis(Text):
-#    pretrained_name = "StevenLimcorn/indonesian-roberta-base-emotion-classifier"
-#    emotion = pipeline("sentiment-analysis",
-#                       model=pretrained_name,
-#                       tokenizer=pretrained_name)
-#    return emotion(Text)
-
-
 def TFIDF_word_weight(vect, word_weight):
     feature_name = np.array(vect.get_feature_names_out())
     data = word_weight.data
@@ -107,17 +96,21 @@ def TFIDF_word_weight(vect, word_weight):
         word_weght_list.append(word_weght_dict)
     return word_weght_list
 
+def plot_conf_metrics(y_test, pred,):
+    mx = confusion_matrix(y_test, pred)
+    plt.figure(figsize=(2,2))
+    sns.heatmap(mx, annot=True,cmap="Blues", fmt="g")
+    plt.xlabel('Predicted'); plt.ylabel('Y test'); plt.title('Confusion Matrix')
+    st.set_option('deprecation.showPyplotGlobalUse', False)
+    st.pyplot()
+    #recall = (TP) / (TP + FN)
+    #f1_score = (2 * precision * recall) / (precision + recall)
 
 # Extract the most common word in each emotion
 def extract_keyword(Text, num=50):
     tokens = list(Text.split())
     most_common_tokens = Counter(tokens).most_common(num)
     return dict(most_common_tokens)
-
-#Get Nilai K
-def get_nilai_K():
-    K = st.sidebar.slider("Nilai K :", 1, 25, value=3)
-    return {'K': K}
 
 # Visualize Keuyword with WorldCloud
 def visual_WordCould(Text):
@@ -271,22 +264,23 @@ def main():
             sen_result.to_csv('output/sentiment_result.csv', index=False)
 
         # K Fold cross validation & MKNN
-        with st.expander("Klasifikasi Pada dataset Test"):
+        with st.expander("Klasifikasi menggunakan K-FOLD"):
             k_value = st.sidebar.slider('Nilai K ',0,25,3)
 
-            new_df = sen_result.copy()
+            new_df = pd.read_csv('output/sentiment_result.csv')
             X = new_df['text'].values
             y = new_df['Sentiment'].values
             fold_i = 1
             combo_value = {3:"3 Fold", 5:'5 Fold', 7:'7 Fold', 10:'10 Fold'}
             fold_n = st.sidebar.selectbox('Nilai Fold', options=combo_value.keys(), format_func=lambda x:combo_value[x])
-            sum_accuracy, sum_precision,sum_recall,sum_error = 0, 0, 0, 0
-            kfold = KFold(fold_n, shuffle=True, random_state=33)
-            res, fl = [], []
-            pr_result, rc_result, error_result = [], [], []
-
+            sum_accuracy = 0
+            kfold = KFold(fold_n, shuffle=True, random_state=42)
+            enc = LabelEncoder()
+            fl = []
+            cm_result = list()
+            acc, rc, pr, f1 = [], [], [], []
             # K-Fold
-            for train_index, test_index in stqdm(kfold.split(X)):
+            for train_index, test_index in kfold.split(X):
                 #st.write("Fold : ", fold_i)
                 fl.append(fold_i)
                 #st.write("Train :", train_index.shape, "Test :",test_index.shape)
@@ -296,45 +290,45 @@ def main():
                 y_test = y[test_index]
 
                 #Save Train and Test dataset
-                svX = open('output/ResultX.txt', 'w')
-                svX.write ('\n'.join(str(item) for item in X_train).replace("   "," "))
-                svf = open('output/ResultX.txt', 'a')
+                #svX = open('output/ResultX.txt', 'w')
+                #svX.write ('\n'.join(str(item) for item in X_train).replace("   "," "))
+                svf = open('output/ResultX.txt', 'w')
                 sv_text = '\n'.join(str(item) for item in X_test).replace("   "," ")
                 svf.write(sv_text)
                 svY = open ('output/y_train.txt', 'w')
                 svY.write('\n'.join(str(item) for item in y_train))
 
                 #TFIDF
-                tf = TfidfVectorizer()
+                tf = TfidfVectorizer(decode_error="replace")
                 X_train = tf.fit_transform(X_train)
                 X_test = tf.transform(X_test)
+                
+                y_train = enc.fit_transform(y_train)
+                y_test = enc.transform(y_test)
 
                 # Algorithm
-                clf = ModifiedKNN(k=k_value)
+                clf = ModifiedKNN(k_value)
                 clf.fit(X_train, y_train)
                 pred, jarak = clf.predict(X_test)
                 neigbor_index = clf.get_neigbors(X_test)
 
                 # Confusion Matrix
-                Cmatrix = confusion_matrix(y_test, pred)
-                tn,fp,fn,tp = Cmatrix.ravel()
-                accuracy = (tn+tp)/(tn+fp+fn+tp)*100
-
-                pr_score = tp / (fp+tp)*100
-                rc_score = tp /(fn+tp)*100
-                ferror_score = 2 * ((pr_score*rc_score) / (pr_score+rc_score))
+                #cm = confusion_matrix(y_test, pred)
+                accuracy = accuracy_score(y_test, pred)*100
+                precision = precision_score(y_test, pred)*100
+                recall = recall_score(y_test, pred)*100
+                f1_scores = f1_score(y_test, pred)*100
+                #plot_conf_metrics(y_test, pred)
 
                 sum_accuracy += accuracy
-                sum_precision += pr_score
-                sum_recall += rc_score
-                sum_error += ferror_score
 
                 fold_i += 1
-                res.append(accuracy)
-                pr_result.append(pr_score)
-                rc_result.append(rc_score)
-                error_result.append(ferror_score)
-
+                acc.append(accuracy)
+                pr.append(precision)
+                rc.append(recall)
+                f1.append(f1_scores)
+                #cm_result.append(cm)
+            
             with open("output/MKNN_prediction.txt", "w") as f:
                 mknn_predited_label ='\n'.join(str(item) for item in pred)
                 f.write(mknn_predited_label)
@@ -344,28 +338,30 @@ def main():
                 g.write(mknn_distance)
             with open('output/index_ttg.txt', 'w') as j:
                 j.write('\n'.join(str(a) for a in neigbor_index))
-
+            #st.write(cm_result)
             knn_pred = pd.read_csv('output/MKNN_prediction.txt', names=['Sentiment'])
-            jarak_pred = pd.read_csv('output/jarak_ttg.txt', names=['Distance'], sep='-')
-            text_test = pd.read_csv('output/text_tst.txt', names=['text'])
+            jarak_pred = pd.read_csv('output/jarak_ttg.txt', names=['Distance'], sep='\t')
+            text_test = pd.read_csv('output/ResultX.txt', names=['text'])
             index_pred = pd.read_csv('output/index_ttg.txt', names=['Neigbor'])
             text_test = text_test.join(knn_pred)
             text_test = text_test.join(jarak_pred)
             text_test = text_test.join(index_pred)
+            text_test['Sentiment'] = text_test['Sentiment'].apply(lambda x: 'Positive' if x == 1 else 'Negative')
+            text_test = text_test.dropna()
             st.dataframe(text_test)
             new_frame = pd.DataFrame(X_test)
             new_frame = new_frame.join(knn_pred)
 
             avg_acc = sum_accuracy/fold_n
-            maxs = max(res)
-            mins = min(res)
-            res_df = pd.DataFrame({'K Fold':fl, 'Accuracy': res, 'Precison':pr_result, 'Recall':rc_result, 'f1 error':error_result})
+            maxs = max(acc)
+            mins = min(acc)
+            res_df = pd.DataFrame({'K Fold':fl, 'Accuracy': acc, 'Precison':pr, 'Recall':rc, 'f1 score':f1})
             st.table(res_df)
             st.write("Avearge accuracy : ", str("%.4f" % avg_acc)+'%')
-            st.write("Max Score : ",str(maxs),"in Fold : ", str(res.index(maxs)+1))
-            st.write("Min Score : ",str(mins), "in Fold : ", str(res.index(mins)+1))
-            st.line_chart(res_df[['Accuracy', 'Precison', 'Recall', 'f1 error']])
-
+            st.write("Max Score : ",str(maxs),"in Fold : ", str(acc.index(maxs)+1))
+            st.write("Min Score : ",str(mins), "in Fold : ", str(acc.index(mins)+1))
+            st.line_chart(res_df[['Accuracy', 'Precison', 'Recall', 'f1 score']])
+            
         with st.expander("Tweets Sentiment Visualize"):
             st.sidebar.markdown("Sentiment and Emotion Plot")
             sen_y_train = pd.read_csv('output/y_train.txt', names=['Sentiment'])
