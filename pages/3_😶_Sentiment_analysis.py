@@ -289,9 +289,6 @@ def main():
                 X_test = X[test_index]
                 y_test = y[test_index]
 
-                #Save Train and Test dataset
-                #svX = open('output/ResultX.txt', 'w')
-                #svX.write ('\n'.join(str(item) for item in X_train).replace("   "," "))
                 svf = open('output/ResultX.txt', 'w')
                 sv_text = '\n'.join(str(item) for item in X_test).replace("   "," ")
                 svf.write(sv_text)
