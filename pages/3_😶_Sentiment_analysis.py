@@ -1,11 +1,8 @@
 import PIL.Image as Image
 import numpy as np
-import pathlib
-from numpy import mean
 import streamlit as st
-import re
+import re, unicodedata
 
-import neattext.functions as nfx
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
@@ -29,7 +26,6 @@ import seaborn as sns
 import plotly.express as px
 
 import pandas as pd
-import os
 import json
 from collections import Counter
 from soupsieve import select
@@ -49,8 +45,8 @@ def Sentiment_analysis():
     sia1B.lexicon.clear()
 
     # Read custom Lexicon Bahasa Indonesia
-    data1A = pathlib.Path('data/lexicon_sentimen_negatif.txt').read_text()
-    data1B = pathlib.Path('data/lexicon_sentimen_positif.txt').read_text()
+    data1A = open('data/lexicon_sentimen_negatif.txt', 'r').read()
+    data1B = open('data/lexicon_sentimen_positif.txt', 'r').read()
     # convert lexicon to dictonary
     insetNeg = json.loads(data1A)
     insetPos = json.loads(data1B)
@@ -62,9 +58,6 @@ def Sentiment_analysis():
     # method untuk cek apa sentimen pos,neg,neu
     def is_positive_inset(Text: str) -> bool:
         return sia1A.polarity_scores(Text)["compound"] + sia1B.polarity_scores(Text)["compound"] >= 0.05
-
-    # def is_negative_inset(tweet: str) -> bool:
-    # return sia1A.polarity_scores(tweet)["compound"] + sia1B.polarity_scores(tweet)["compound"] <= -0.05
 
     tweets = df['text'].to_list()
 
@@ -176,11 +169,24 @@ def main():
 
     # Punctuation Removal
     def punc_clean(Text):
-        Text = nfx.remove_urls(Text)
-        Text = nfx.remove_punctuations(Text)
-        Text = nfx.remove_emojis(Text)
-        Text = nfx.remove_special_characters(Text)
-        Text = nfx.remove_numbers(Text)
+        #remove url
+        Text = re.sub(r'(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:\'".,<>?«»“”‘’]))', '', Text)
+        #remove mention
+        Text = re.sub(r"@[A-Za-z0-9]+","", Text)
+        #remove hastag
+        Text = re.sub(r"#[A-Za-z0-9_]+","", Text)
+        #punchuation
+        Text = re.sub(r'[^\w]|_', ' ', Text)
+        #remove number in string
+        Text = re.sub(r"\S*\d\S*", "", Text).strip()
+        #remove number(int/float)
+        Text =  re.sub(r"[0-9]", " ", Text)
+        Text = re.sub(r"\b\d+\b", " ", Text)
+        #remove double Space
+        Text = re.sub(r'[\s]+', ' ', Text)
+        #remove non-ASCII
+        Text = unicodedata.normalize('NFKD', Text).encode('ascii', 'ignore').decode('utf-8', 'ignore')
+        Text = ' '.join( [w for w in Text.split() if len(w)>1] )
         return Text
 
     @st.cache
@@ -276,13 +282,13 @@ def main():
             sum_accuracy = 0
             kfold = KFold(fold_n, shuffle=True, random_state=42)
             enc = LabelEncoder()
-            fl = []
+            fol = []
             cm_result = list()
             acc, rc, pr, f1 = [], [], [], []
             # K-Fold
             for train_index, test_index in kfold.split(X):
                 #st.write("Fold : ", fold_i)
-                fl.append(fold_i)
+                fol.append(fold_i)
                 #st.write("Train :", train_index.shape, "Test :",test_index.shape)
                 X_train = X[train_index]
                 y_train = y[train_index]
@@ -352,7 +358,7 @@ def main():
             avg_acc = sum_accuracy/fold_n
             maxs = max(acc)
             mins = min(acc)
-            res_df = pd.DataFrame({'K Fold':fl, 'Accuracy': acc, 'Precison':pr, 'Recall':rc, 'f1 score':f1})
+            res_df = pd.DataFrame({'K Fold':fol, 'Accuracy': acc, 'Precison':pr, 'Recall':rc, 'f1 score':f1})
             st.table(res_df)
             st.write("Avearge accuracy : ", str("%.4f" % avg_acc)+'%')
             st.write("Max Score : ",str(maxs),"in Fold : ", str(acc.index(maxs)+1))
