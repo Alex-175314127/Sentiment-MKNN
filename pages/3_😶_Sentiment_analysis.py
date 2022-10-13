@@ -57,7 +57,7 @@ def Sentiment_analysis():
 
     # method untuk cek apa sentimen pos,neg,neu
     def is_positive_inset(Text: str) -> bool:
-        return sia1A.polarity_scores(Text)["compound"] + sia1B.polarity_scores(Text)["compound"] >= 0.05
+        return sia1A.polarity_scores(Text)["compound"] + sia1B.polarity_scores(Text)["compound"] >= 0
 
     tweets = df['text'].to_list()
 
