@@ -3606,4 +3606,5 @@
 "vakansi": 3,
 "spesial": 4,
 "asrama": 3,
-"orisinal": 3 }
+"orisinal": 3,
+"money heist": 0 }

@@ -5,14 +5,14 @@ from models.MKNN import ModifiedKNN
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import confusion_matrix, accuracy_score
+from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 import numpy as np
 from sklearn.model_selection import KFold
 from sklearn.model_selection import cross_val_score
 
 #X, y = load_iris(return_X_y=True)
 
-df = pd.read_csv('Twitter_fresh\sentiment_result_200.csv')
+df = pd.read_csv('output\sentiment_result.csv')
 X = df['text'].values
 y = df['Sentiment'].values
 
@@ -39,7 +39,7 @@ def calculate_conf_metrics(y_test, pred):
             TN += 1
         else:
             FN += 1
-    print(f'TP : {TP} \t FP : {FP} \t TN : {TN} \t FN : {FN}')
+    #print(f'TP : {TP} \t FP : {FP} \t TN : {TN} \t FN : {FN}')
     accuracy = (TP + TN) / (TP + FP + TN + FN)
     precision = (TP) / (TP + FP)
     recall = (TP) / (TP + FN)
@@ -67,13 +67,22 @@ for train_index, test_index in kfold.split(X):
     clf.fit(X_train, y_train)
     predict, jarak = clf.predict(X_test)
 
-    accuracy, precision, recall, f1_score = calculate_conf_metrics(y_test, predict)
+    #accuracy, precision, recall, f1_score = calculate_conf_metrics(y_test, predict)
+    tn, fp, fn, tp = confusion_matrix(y_test, predict).ravel()
+    print(f'TN:{tn} FP:{fp} FN:{fn} TP:{tp}')
+    accuracy = (tp + tn) / (tp + fp + tn + fn)*100
+    #accuracy = accuracy_score(y_test, predict)*100
+    #precision = precision_score(y_test, predict)
+    precision = (tp) / (tp + fp)
+    #recall = recall_score(y_test, predict)
+    recall = (tp) / (tp + fn)
+    f1_scores = (2 * precision * recall) / (precision + recall)
     sum_akurasi += accuracy
     acc.append(accuracy)
     pr.append(precision)
     rc.append(recall)
-    f1.append(f1_score)
-    print("Accuracy :", str("%.4f" % accuracy)+'%')
+    f1.append(f1_scores)
+    #print("Accuracy :", str("%.4f" % accuracy)+'%')
     i += 1
 
 sum_acc = sum_akurasi/n

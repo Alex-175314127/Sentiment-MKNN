@@ -57,7 +57,7 @@ def Sentiment_analysis():
 
     # method untuk cek apa sentimen pos,neg,neu
     def is_positive_inset(Text: str) -> bool:
-        return sia1A.polarity_scores(Text)["compound"] + sia1B.polarity_scores(Text)["compound"] >= 0
+        return sia1A.polarity_scores(Text)["compound"] + sia1B.polarity_scores(Text)["compound"] >= 0.05
 
     tweets = df['text'].to_list()
 
@@ -88,6 +88,28 @@ def TFIDF_word_weight(vect, word_weight):
         word_weght_dict = dict(dict(zip(feature, count)))
         word_weght_list.append(word_weght_dict)
     return word_weght_list
+
+def Conf_metrics(predicted, actual):
+    accuracy,precision,recall,f1_score = 0,0,0,0
+    try:
+        TP,FP,TN,FN = 0, 0, 0, 0
+        for i in range(len(predicted)):
+            if   (predicted[i] == 0) & (actual[i] == 0):
+                TP += 1
+            elif (predicted[i] == 0) & (actual[i] == 1):
+                FP += 1
+            elif (predicted[i] == 1) & (actual[i] == 1):
+                TN += 1
+            else:
+                FN += 1
+
+        accuracy  = (TP + TN) / (TP + FP + TN + FN) 
+        precision = (TP) / (TP + FP) 
+        recall    = (TP) / (TP + FN) 
+        f1_score  = (2 * precision * recall) / (precision + recall)
+    except ZeroDivisionError:
+        pass
+    return accuracy,precision,recall,f1_score
 
 def plot_conf_metrics(y_test, pred,):
     mx = confusion_matrix(y_test, pred)
@@ -170,12 +192,12 @@ def main():
     # Punctuation Removal
     def punc_clean(Text):
         #remove url
-        Text = re.sub(r'(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:\'".,<>?«»“”‘’]))', '', Text)
+        Text = re.sub(r'^https?:\/\/.*[\r\n]*','',Text)
         #remove mention
         Text = re.sub(r"@[A-Za-z0-9]+","", Text)
         #remove hastag
         Text = re.sub(r"#[A-Za-z0-9_]+","", Text)
-        #punchuation
+        #tanda baca
         Text = re.sub(r'[^\w]|_', ' ', Text)
         #remove number in string
         Text = re.sub(r"\S*\d\S*", "", Text).strip()
@@ -220,7 +242,7 @@ def main():
         for w in Text:
             result.append(stemmer.stem(w))
             result.append(" ")
-        return " ".join(result)
+        return "".join(result)
 
     if df_file is not None:
         raw_text = load_data()
@@ -307,21 +329,21 @@ def main():
                 X_test = tf.transform(X_test)
                 
                 y_train = enc.fit_transform(y_train)
-                y_test = enc.transform(y_test)
+                y_true = enc.transform(y_test)
 
                 # Algorithm
                 clf = ModifiedKNN(k_value)
                 clf.fit(X_train, y_train)
-                pred, jarak = clf.predict(X_test)
+                y_pred, jarak = clf.predict(X_test)
                 neigbor_index = clf.get_neigbors(X_test)
 
                 # Confusion Matrix
-                #cm = confusion_matrix(y_test, pred)
-                accuracy = accuracy_score(y_test, pred)*100
-                precision = precision_score(y_test, pred)*100
-                recall = recall_score(y_test, pred)*100
-                f1_scores = f1_score(y_test, pred)*100
-                #plot_conf_metrics(y_test, pred)
+                tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+                accuracy = (tp + tn) / (tp + fp + tn + fn)*100
+                precision = (tp) / (tp + fp)*100
+                recall = (tp) / (tp + fn)*100
+                f1_scores = (2 * precision * recall) / (precision + recall)
+                #plot_conf_metrics(y_predict, pred)
 
                 sum_accuracy += accuracy
 
@@ -333,7 +355,7 @@ def main():
                 #cm_result.append(cm)
             
             with open("output/MKNN_prediction.txt", "w") as f:
-                mknn_predited_label ='\n'.join(str(item) for item in pred)
+                mknn_predited_label ='\n'.join(str(item) for item in y_pred)
                 f.write(mknn_predited_label)
             with open('output/jarak_ttg.txt', 'w') as g:
                 jarak = [nMin(k_value,map(float,i)) for i in jarak]
@@ -342,14 +364,16 @@ def main():
             with open('output/index_ttg.txt', 'w') as j:
                 j.write('\n'.join(str(a) for a in neigbor_index))
             #st.write(cm_result)
-            knn_pred = pd.read_csv('output/MKNN_prediction.txt', names=['Sentiment'])
+            label_actual = pd.read_csv('output/y_train.txt', names=['Actual_label'])
+            knn_pred = pd.read_csv('output/MKNN_prediction.txt', names=['Predict_label'])
             jarak_pred = pd.read_csv('output/jarak_ttg.txt', names=['Distance'], sep='\t')
             text_test = pd.read_csv('output/ResultX.txt', names=['text'])
             index_pred = pd.read_csv('output/index_ttg.txt', names=['Neigbor'])
+            text_test = text_test.join(label_actual)
             text_test = text_test.join(knn_pred)
             text_test = text_test.join(jarak_pred)
             text_test = text_test.join(index_pred)
-            text_test['Sentiment'] = text_test['Sentiment'].apply(lambda x: 'Positive' if x == 1 else 'Negative')
+            text_test['Predict_label'] = text_test['Predict_label'].apply(lambda x: 'Positive' if x == 1 else 'Negative')
             text_test = text_test.dropna()
             st.dataframe(text_test)
             new_frame = pd.DataFrame(X_test)
@@ -363,7 +387,7 @@ def main():
             st.write("Avearge accuracy : ", str("%.4f" % avg_acc)+'%')
             st.write("Max Score : ",str(maxs),"in Fold : ", str(acc.index(maxs)+1))
             st.write("Min Score : ",str(mins), "in Fold : ", str(acc.index(mins)+1))
-            st.line_chart(res_df[['Accuracy', 'Precison', 'Recall', 'f1 score']])
+            st.line_chart(res_df[['Accuracy', 'Precison', 'Recall', 'f1 score']],width=400, height=400)
             
         with st.expander("Tweets Sentiment Visualize"):
             st.sidebar.markdown("Sentiment and Emotion Plot")

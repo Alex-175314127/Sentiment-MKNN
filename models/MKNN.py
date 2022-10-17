@@ -39,7 +39,7 @@ def validity(distance, y, k):
             fungsi_k.append(y[sorted_index[j + 1]])
 
         label = 0
-        print('{} = neigbor: {}'.format(y[current_index], fungsi_k))
+        #print('{} = neigbor: {}'.format(y[current_index], fungsi_k))
         n_val.write('{} = neigbor: {}'.format(y[current_index], fungsi_k) + '\n')
     
         #st.write('{}, neigbor: {}'.format(y[current_index], fungsi_k))

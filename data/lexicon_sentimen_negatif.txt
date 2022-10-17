@@ -6606,4 +6606,5 @@
 "penggaruk": -3,
 "senewen": -4,
 "menetapkan": -5,
-"kacang botor": -3 }
+"kacang botor": -3,
+"money heist": 0 }
