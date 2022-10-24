@@ -5,6 +5,8 @@ import base64
 import time
 import configparser
 from stqdm import stqdm
+from datetime import datetime
+from track_util import create_page_visited_table,add_page_visited_details
 
 timestr = time.strftime("%Y%m%d-%H%M%S")
 def download_result(Text):
@@ -19,9 +21,11 @@ def download_result(Text):
     st.markdown(href_csv, unsafe_allow_html=True)
 
 def main():
+    create_page_visited_table()
     st.set_page_config(page_title="Twitter Data Crawling",page_icon="🐤",layout='wide')
     st.image('data/twitter_banner.jpg')
     st.subheader("Tools for Crawling Data from Twiiter")
+    add_page_visited_details("Twitter Crawling",datetime.now())
 
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)

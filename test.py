@@ -22,14 +22,15 @@ dataset = [[2.7810836,2.550537003,0],
 		  [8.675418651,-0.242068655,1],
 		  [7.673756466,3.508563011,1]]
 
-df = pd.read_csv('output/Clean_text_Sentiment.csv')
+df = pd.read_csv('output/sentiment_result.csv')
 X = df['text']
 y = df['Sentiment']
 
 enc = LabelEncoder()
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
+print("before")
+print(y_train)
 tf = TfidfVectorizer()
 X_train = tf.fit_transform(X_train)
 X_test = tf.transform(X_test)
@@ -37,9 +38,15 @@ y_train = enc.fit_transform(y_train)
 
 #neighbors = get_neighbors(dataset, dataset[0], 3)
 #for neighbor in neighbors:
-	#print(neighbor)
+	#pr-int(neighbor)
 
-clf = NearestNeighbors(n_neighbors=3)
-clf.fit(X_train)
-result = clf.kneighbors(X_test, return_distance=False)
-print(result)
+#clf = NearestNeighbors(n_neighbors=3)
+#clf.fit(X_train)
+#result = clf.kneighbors(X_test, return_distance=False)
+#print(result)
+
+print("AFter")
+print(y_train)
+y_trian = enc.inverse_transform(y_train)
+print("inverse")
+print(y_trian)

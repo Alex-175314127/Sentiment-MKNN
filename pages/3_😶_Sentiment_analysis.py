@@ -9,13 +9,14 @@ from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 from wordcloud import WordCloud, ImageColorGenerator
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 #from transformers import pipeline
-from sklearn.model_selection import train_test_split, KFold
+from sklearn.model_selection import KFold
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import LabelEncoder
 from models.MKNN import ModifiedKNN
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score
 from sklearn.metrics import f1_score, recall_score
 from heapq import nsmallest as nMin
+from track_util import create_page_visited_table,add_page_visited_details
 
 import matplotlib.pyplot as plt
 import matplotlib
@@ -32,6 +33,7 @@ from soupsieve import select
 
 import base64
 import time
+from datetime import datetime
 
 
 ### SENTIMENT ANALYSIS ###
@@ -89,28 +91,6 @@ def TFIDF_word_weight(vect, word_weight):
         word_weght_list.append(word_weght_dict)
     return word_weght_list
 
-def Conf_metrics(predicted, actual):
-    accuracy,precision,recall,f1_score = 0,0,0,0
-    try:
-        TP,FP,TN,FN = 0, 0, 0, 0
-        for i in range(len(predicted)):
-            if   (predicted[i] == 0) & (actual[i] == 0):
-                TP += 1
-            elif (predicted[i] == 0) & (actual[i] == 1):
-                FP += 1
-            elif (predicted[i] == 1) & (actual[i] == 1):
-                TN += 1
-            else:
-                FN += 1
-
-        accuracy  = (TP + TN) / (TP + FP + TN + FN) 
-        precision = (TP) / (TP + FP) 
-        recall    = (TP) / (TP + FN) 
-        f1_score  = (2 * precision * recall) / (precision + recall)
-    except ZeroDivisionError:
-        pass
-    return accuracy,precision,recall,f1_score
-
 def plot_conf_metrics(y_test, pred,):
     mx = confusion_matrix(y_test, pred)
     plt.figure(figsize=(2,2))
@@ -165,6 +145,7 @@ def main():
     st.title('Sentiment Analysis Twitter')
     st.markdown('This application is all about sentiment analysis of movie Review. All data is Crawling from Twitter')
     st.sidebar.title('Sentiment Analysis Movie Review')
+    create_page_visited_table()
     #hide table index and footer
     Page_config = """
             <style>
@@ -174,6 +155,7 @@ def main():
             </style>
             """
     st.markdown(Page_config, unsafe_allow_html=True)
+    add_page_visited_details("Sentiment Analysis Twitter",datetime.now())
 
     #Preprocessing Process
     st.subheader("Preprocessing")
@@ -293,8 +275,8 @@ def main():
 
         # K Fold cross validation & MKNN
         with st.expander("Klasifikasi menggunakan K-FOLD"):
+            
             k_value = st.sidebar.slider('Nilai K ',0,25,3)
-
             new_df = pd.read_csv('output/sentiment_result.csv')
             X = new_df['text'].values
             y = new_df['Sentiment'].values
@@ -303,6 +285,7 @@ def main():
             fold_n = st.sidebar.selectbox('Nilai Fold', options=combo_value.keys(), format_func=lambda x:combo_value[x])
             sum_accuracy = 0
             kfold = KFold(fold_n, shuffle=True, random_state=42)
+            tf = TfidfVectorizer(decode_error="replace")
             enc = LabelEncoder()
             fol = []
             cm_result = list()
@@ -324,7 +307,6 @@ def main():
                 svY.write('\n'.join(str(item) for item in y_train))
 
                 #TFIDF
-                tf = TfidfVectorizer(decode_error="replace")
                 X_train = tf.fit_transform(X_train)
                 X_test = tf.transform(X_test)
                 
@@ -343,10 +325,10 @@ def main():
                 precision = (tp) / (tp + fp)*100
                 recall = (tp) / (tp + fn)*100
                 f1_scores = (2 * precision * recall) / (precision + recall)
-                #plot_conf_metrics(y_predict, pred)
+                plot_conf_metrics(y_true, y_pred)
 
+                y_pred = enc.inverse_transform(y_pred)
                 sum_accuracy += accuracy
-
                 fold_i += 1
                 acc.append(accuracy)
                 pr.append(precision)
@@ -373,7 +355,7 @@ def main():
             text_test = text_test.join(knn_pred)
             text_test = text_test.join(jarak_pred)
             text_test = text_test.join(index_pred)
-            text_test['Predict_label'] = text_test['Predict_label'].apply(lambda x: 'Positive' if x == 1 else 'Negative')
+            #text_test['Predict_label'] = text_test['Predict_label'].apply(lambda x: 'Positive' if x == 1 else 'Negative')
             text_test = text_test.dropna()
             st.dataframe(text_test)
             new_frame = pd.DataFrame(X_test)
