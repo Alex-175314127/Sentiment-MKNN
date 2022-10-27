@@ -42,7 +42,7 @@ def main():
 
     with st.form(key='Twitter Form'):
         search_w = st.text_input("Enter keyword to search")
-        limit_tw = st.slider("How many tweets to get", 0, 500, step=10)
+        limit_tw = st.slider("How many tweets to get", 10, 500, step=5)
         search_word = f'{search_w} -filter:retweets'
         date_since = st.date_input("Tweets Since")
         date_until = st.date_input("Tweets until")

@@ -22,14 +22,14 @@ import matplotlib.pyplot as plt
 import matplotlib
 from stqdm import stqdm
 
-matplotlib.use("Agg")
+#matplotlib.use("Agg")
 import seaborn as sns
 import plotly.express as px
 
 import pandas as pd
 import json
 from collections import Counter
-from soupsieve import select
+import itertools
 
 import base64
 import time
@@ -37,8 +37,8 @@ from datetime import datetime
 
 
 ### SENTIMENT ANALYSIS ###
-def Sentiment_analysis():
-    df = pd.read_csv('output/Clean_text.csv', encoding='utf-8')
+def Sentiment_analysis(df: pd.DataFrame()):
+    #df = pd.read_csv(Text)
 
     # LexiconVader dengan custom Lexicon(bahasa indonesia)
     sia1A, sia1B = SentimentIntensityAnalyzer(), SentimentIntensityAnalyzer()
@@ -89,17 +89,34 @@ def TFIDF_word_weight(vect, word_weight):
         feature = feature_name[idx]
         word_weght_dict = dict(dict(zip(feature, count)))
         word_weght_list.append(word_weght_dict)
-    return word_weght_list
+    word_weght_df = pd.DataFrame(word_weght_list)
+    word_weght_df = word_weght_df.fillna(0)
+    return word_weght_df
 
-def plot_conf_metrics(y_test, pred,):
-    mx = confusion_matrix(y_test, pred)
-    plt.figure(figsize=(2,2))
-    sns.heatmap(mx, annot=True,cmap="Blues", fmt="g")
-    plt.xlabel('Predicted'); plt.ylabel('Y test'); plt.title('Confusion Matrix')
-    st.set_option('deprecation.showPyplotGlobalUse', False)
-    st.pyplot()
-    #recall = (TP) / (TP + FN)
-    #f1_score = (2 * precision * recall) / (precision + recall)
+def plot_confusion_matrix(predicted_labels_list, y_test_list):
+    cnf_matrix = confusion_matrix(y_test_list, predicted_labels_list)
+    np.set_printoptions(precision=2)
+    classes = ['Positive','Negative']
+    
+    fig = plt.figure()
+    plt.imshow(cnf_matrix, interpolation='nearest', cmap=plt.get_cmap('Blues'))
+    plt.title('Confusion matrix')
+    plt.colorbar()
+
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+
+    thresh = cnf_matrix.max() / 2.
+
+    for i, j in itertools.product(range(cnf_matrix.shape[0]), range(cnf_matrix.shape[1])):
+        plt.text(j, i, format(cnf_matrix[i, j], 'd'), horizontalalignment="center",
+                 color="white" if cnf_matrix[i, j] > thresh else "black")
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    st.pyplot(fig)
+    
 
 # Extract the most common word in each emotion
 def extract_keyword(Text, num=50):
@@ -163,6 +180,7 @@ def main():
 
     def load_data():
         data = pd.read_csv(df_file, encoding='latin1')
+        data.text = data.text.astype(str)
         data = data[['user_name', 'date', 'text']]
         data['date'] = pd.to_datetime(data['date'])
         return data
@@ -174,13 +192,14 @@ def main():
     # Punctuation Removal
     def punc_clean(Text):
         #remove url
-        Text = re.sub(r'^https?:\/\/.*[\r\n]*','',Text)
+        Text = re.sub(r'http[s]?\:\/\/.[a-zA-Z0-9\.\/\_?=%&#\-\+!]+', ' ', Text)
         #remove mention
         Text = re.sub(r"@[A-Za-z0-9]+","", Text)
         #remove hastag
         Text = re.sub(r"#[A-Za-z0-9_]+","", Text)
         #tanda baca
         Text = re.sub(r'[^\w]|_', ' ', Text)
+        Text = re.sub(r'[!$%^&*@#()_+|~=`{}\[\]%\-:";\'<>?,.\/]', ' ', Text)
         #remove number in string
         Text = re.sub(r"\S*\d\S*", "", Text).strip()
         #remove number(int/float)
@@ -268,15 +287,19 @@ def main():
                 raw_text.to_csv('output/Clean_text.csv')
 
         #Train Sentiment labeling
-        with st.expander("Train Labeling"):
-            sen_result = Sentiment_analysis()
-            st.dataframe(sen_result)
-            sen_result.to_csv('output/sentiment_result.csv', index=False)
+        sen_result = Sentiment_analysis(raw_text)
+        sen_result.to_csv('output/sentiment_result.csv', index=False)
+        
+        with st.expander('TF-IDF'):
+            tf = TfidfVectorizer(decode_error="replace")
+            Xfeatures = sen_result.text
+            Xfeatures = tf.fit_transform(Xfeatures)
+            df_tfidf = TFIDF_word_weight(tf, Xfeatures)
+            st.dataframe(df_tfidf)
 
         # K Fold cross validation & MKNN
-        with st.expander("Klasifikasi menggunakan K-FOLD"):
-            
-            k_value = st.sidebar.slider('Nilai K ',0,25,3)
+        with st.expander("Classification Result"):
+            k_value = st.sidebar.slider('Nilai K ',1,25,3)
             new_df = pd.read_csv('output/sentiment_result.csv')
             X = new_df['text'].values
             y = new_df['Sentiment'].values
@@ -285,10 +308,11 @@ def main():
             fold_n = st.sidebar.selectbox('Nilai Fold', options=combo_value.keys(), format_func=lambda x:combo_value[x])
             sum_accuracy = 0
             kfold = KFold(fold_n, shuffle=True, random_state=42)
-            tf = TfidfVectorizer(decode_error="replace")
+            predicted_label = np.array([])
+            actual_label = np.array([])
+            
             enc = LabelEncoder()
             fol = []
-            cm_result = list()
             acc, rc, pr, f1 = [], [], [], []
             # K-Fold
             for train_index, test_index in kfold.split(X):
@@ -325,7 +349,9 @@ def main():
                 precision = (tp) / (tp + fp)*100
                 recall = (tp) / (tp + fn)*100
                 f1_scores = (2 * precision * recall) / (precision + recall)
-                plot_conf_metrics(y_true, y_pred)
+                predicted_label = np.append(predicted_label, y_pred)
+                actual_label = np.append(actual_label, y_true)
+                #plot_conf_metrics(y_true, y_pred)
 
                 y_pred = enc.inverse_transform(y_pred)
                 sum_accuracy += accuracy
@@ -369,8 +395,11 @@ def main():
             st.write("Avearge accuracy : ", str("%.4f" % avg_acc)+'%')
             st.write("Max Score : ",str(maxs),"in Fold : ", str(acc.index(maxs)+1))
             st.write("Min Score : ",str(mins), "in Fold : ", str(acc.index(mins)+1))
-            st.line_chart(res_df[['Accuracy', 'Precison', 'Recall', 'f1 score']],width=400, height=400)
+            st.line_chart(res_df,x='K Fold', y=['Accuracy', 'Precison', 'Recall', 'f1 score'])
+            #[['Accuracy', 'Precison', 'Recall', 'f1 score']]
+            plot_confusion_matrix(predicted_label, actual_label)
             
+            #st.pyplot(cm_plot)
         with st.expander("Tweets Sentiment Visualize"):
             st.sidebar.markdown("Sentiment and Emotion Plot")
             sen_y_train = pd.read_csv('output/y_train.txt', names=['Sentiment'])
