@@ -1,13 +1,11 @@
-from secrets import choice
-from unittest import result
-from matplotlib.collections import Collection
 import pandas as pd
 import numpy as np
 import streamlit as st
-import os
 import json
 from datetime import datetime
-
+from models.MKNN import ModifiedKNN
+from sklearn.preprocessing import LabelEncoder
+from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from collections import Counter
 
@@ -57,20 +55,44 @@ def main():
         add_page_visited_details("Tweet Sentiment",datetime.now())
 
         with st.form(key='emotion_clf_form'):
-            raw_text = st.text_area("Masukan Teks")
+            df= pd.read_csv('data/data_Train.csv', encoding='utf-8')
+            Xfeature = df['text'].values
+            ylabels = df['Sentiment'].apply(lambda x: 'Positive' if x == 1 else 'Negative').values
             
-            submit_text = st.form_submit_button("Analyze")
+            raw_text = st.text_area("Input Text to Predict the Sentiment")
+            raw_text = raw_text.lower()
+            submit_text = st.form_submit_button('Analyze')
+            X_test = []
+            if submit_text:
+                Tf = TfidfVectorizer(decode_error='replace')
+                X_train = Tf.fit_transform(Xfeature)
+                X_test.append(raw_text)
+                X_test = Tf.transform(X_test)
+                
+                enc = LabelEncoder()
+                #y_train = enc.fit_transform(ylabels)
+                
+                clf = ModifiedKNN(k=5)
+                clf.fit(X_train, ylabels)
+                pred, jarak = clf.predict(X_test)
+                
+                #pred = enc.inverse_transform(pred)
+                st.write("Label = ",pred)
+                
+            #raw_text = st.text_area("Masukan Teks")
+            
+            #submit_text = st.form_submit_button("Analyze")
 
-        if submit_text:
-            col1,col2 = st.columns(2)
+        #if submit_text:
+            #col1,col2 = st.columns(2)
             
             #Sentiment Analysis
-            pred_sentiment, sen_score = Sentiment_analysis(raw_text)
+            #pred_sentiment, sen_score = Sentiment_analysis(raw_text)
 
-            col1.metric("Sentiment Score", sen_score)
-            col2.metric("Sentiment",pred_sentiment)
+            #col1.metric("Sentiment Score", sen_score)
+            #col2.metric("Sentiment",pred_sentiment)
 
-            add_prediction_details(raw_text,pred_sentiment,sen_score,datetime.now())
+            #add_prediction_details(raw_text,pred_sentiment,sen_score,datetime.now())
 
     elif choice == "History":
         st.subheader("Manage & History Results")

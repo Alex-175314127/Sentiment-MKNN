@@ -384,6 +384,7 @@ def main():
             #text_test['Predict_label'] = text_test['Predict_label'].apply(lambda x: 'Positive' if x == 1 else 'Negative')
             text_test = text_test.dropna()
             st.dataframe(text_test)
+            st.session_state['text_test'] = text_test
             new_frame = pd.DataFrame(X_test)
             new_frame = new_frame.join(knn_pred)
 

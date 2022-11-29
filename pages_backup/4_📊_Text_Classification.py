@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import altair as alt
 
-def main():
+def run():
     st.set_page_config(page_title="Text Classification", page_icon="📊", layout='wide')
     st.title("Text Classification Movie Review")
     st.write("Using K-NN Algorithm with dataset from Twitter")
