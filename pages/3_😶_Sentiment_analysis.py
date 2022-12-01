@@ -8,7 +8,7 @@ from nltk.corpus import stopwords
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 from wordcloud import WordCloud, ImageColorGenerator
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
-#from transformers import pipeline
+
 from sklearn.model_selection import KFold
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import LabelEncoder
@@ -212,7 +212,6 @@ def main():
         Text = ' '.join( [w for w in Text.split() if len(w)>1] )
         return Text
 
-    @st.cache
     def word_norm(tweets):
         word_dict = pd.read_csv('data/indonesia_slangWords.csv')
         norm_word_dict = {}

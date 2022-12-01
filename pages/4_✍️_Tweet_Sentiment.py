@@ -7,41 +7,75 @@ from models.MKNN import ModifiedKNN
 from sklearn.preprocessing import LabelEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
-from collections import Counter
+import re, unicodedata
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 
 import plotly.express as px
 import altair as alt
 
-def Sentiment_analysis(Text):
-    senti = SentimentIntensityAnalyzer()
-    #Delete Default lexicon VADER
-    senti.lexicon.clear()
 
-    #Read costom Lexicon
-    sentidata = open('data\sentiwords_id.txt', 'r').read()
-    #convert lexicon to dictonary
-    senti_word = json.loads(sentidata)
-
-    #update lexicon vader with custom lexicon (b.indo)
-    senti.lexicon.update(senti_word)
-
-    #True if text positive
-    def is_label(tweet: str) -> bool:
-        return senti.polarity_scores(tweet)['compound'] >= 0.05
-
-    df = [Text]
-    for tweet in df:
-        if is_label(tweet) == True:
-            label = "Positive"
-            st.image('data/images/pos_image.png')
-        else:
-            label = "Negative"
-            st.image('data/images/neg_image.png')
-
-    sen_score = senti.polarity_scores(tweet)['compound']
-
-    return label, sen_score
 ###########################################################################################################################################
+
+def casefolding(Text):
+        Text = Text.lower()
+        return Text
+
+# Punctuation Removal
+def punc_clean(Text):
+    #remove url
+    Text = re.sub(r'http[s]?\:\/\/.[a-zA-Z0-9\.\/\_?=%&#\-\+!]+', ' ', Text)
+    #remove mention
+    Text = re.sub(r"@[A-Za-z0-9]+","", Text)
+    #remove hastag
+    Text = re.sub(r"#[A-Za-z0-9_]+","", Text)
+    #tanda baca
+    Text = re.sub(r'[^\w]|_', ' ', Text)
+    Text = re.sub(r'[!$%^&*@#()_+|~=`{}\[\]%\-:";\'<>?,.\/]', ' ', Text)
+    #remove number in string
+    Text = re.sub(r"\S*\d\S*", "", Text).strip()
+    #remove number(int/float)
+    Text =  re.sub(r"[0-9]", " ", Text)
+    Text = re.sub(r"\b\d+\b", " ", Text)
+    #remove double Space
+    Text = re.sub(r'[\s]+', ' ', Text)
+    #remove non-ASCII
+    Text = unicodedata.normalize('NFKD', Text).encode('ascii', 'ignore').decode('utf-8', 'ignore')
+    Text = ' '.join( [w for w in Text.split() if len(w)>1] )
+    return Text
+
+def word_norm(tweets):
+    word_dict = pd.read_csv('data/indonesia_slangWords.csv')
+    norm_word_dict = {}
+    for index, row in word_dict.iterrows():
+        if row[0] not in norm_word_dict:
+            norm_word_dict[row[0]] = row[1]
+    return [norm_word_dict[term] if term in norm_word_dict else term for term in tweets]
+
+# Tokenize
+def word_tokenize_wrapper(Text):
+    return word_tokenize(Text)
+
+# Stopwords
+def remove_stopword(Text):
+    stopW = stopwords.words('indonesian', 'english')
+    sw = pd.read_csv('data/stopwordbahasa.csv')
+    stopW.extend(sw)
+    remove_sw = ' '.join(Text)
+    clean_sw = [word for word in remove_sw.split() if word.lower() not in stopW]
+    return clean_sw
+
+## Indonesia Stemming
+def indo_stem(Text):
+    factory = StemmerFactory()
+    stemmer = factory.create_stemmer()
+    result = []
+    for w in Text:
+        result.append(stemmer.stem(w))
+        result.append(" ")
+    return "".join(result)
+
 
 def main():
     from track_util import create_page_visited_table,add_page_visited_details,view_all_page_visited_details,add_prediction_details,view_all_prediction_details,create_emotSen_table
@@ -60,39 +94,45 @@ def main():
             ylabels = df['Sentiment'].apply(lambda x: 'Positive' if x == 1 else 'Negative').values
             
             raw_text = st.text_area("Input Text to Predict the Sentiment")
-            raw_text = raw_text.lower()
+            
             submit_text = st.form_submit_button('Analyze')
             X_test = []
             if submit_text:
-                Tf = TfidfVectorizer(decode_error='replace')
-                X_train = Tf.fit_transform(Xfeature)
-                X_test.append(raw_text)
-                X_test = Tf.transform(X_test)
+                with st.spinner('Loading....!'):
+                    raw_text = casefolding(raw_text)
+                    raw_text = punc_clean(raw_text)
+                    raw_text = word_tokenize_wrapper(raw_text)
+                    raw_text = remove_stopword(raw_text)
+                    raw_text = indo_stem(raw_text)
+                    
+                    Tf = TfidfVectorizer(decode_error='replace')
+                    X_train = Tf.fit_transform(Xfeature)
+                    X_test.append(raw_text)
+                    X_test = Tf.transform(X_test)
+                    
+                    enc = LabelEncoder()
+                    #y_train = enc.fit_transform(ylabels)
+                    
+                    clf = ModifiedKNN(k=5)
+                    clf.fit(X_train, ylabels)
+                    pred, jarak = clf.predict(X_test)
+                    
+                    #pred = enc.inverse_transform(pred)
+                    pred = ' '.join([str(w) for w in pred])
+                    st.markdown(f'<h1 style="color:white; text-align:center;">Sentiment : {pred}</h1>',unsafe_allow_html=True)
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.write(' ')
+                    with col2:
+                        if pred == "Positive":
+                            st.image('data/images/pos_image.png')
+                        else:
+                            st.image('data/images/neg_image.png')
+                    with col3:
+                        st.write(' ')
+                    
+                        
                 
-                enc = LabelEncoder()
-                #y_train = enc.fit_transform(ylabels)
-                
-                clf = ModifiedKNN(k=5)
-                clf.fit(X_train, ylabels)
-                pred, jarak = clf.predict(X_test)
-                
-                #pred = enc.inverse_transform(pred)
-                st.write("Label = ",pred)
-                
-            #raw_text = st.text_area("Masukan Teks")
-            
-            #submit_text = st.form_submit_button("Analyze")
-
-        #if submit_text:
-            #col1,col2 = st.columns(2)
-            
-            #Sentiment Analysis
-            #pred_sentiment, sen_score = Sentiment_analysis(raw_text)
-
-            #col1.metric("Sentiment Score", sen_score)
-            #col2.metric("Sentiment",pred_sentiment)
-
-            #add_prediction_details(raw_text,pred_sentiment,sen_score,datetime.now())
 
     elif choice == "History":
         st.subheader("Manage & History Results")
