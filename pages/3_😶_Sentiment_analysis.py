@@ -19,7 +19,7 @@ from heapq import nsmallest as nMin
 from track_util import create_page_visited_table,add_page_visited_details
 
 import matplotlib.pyplot as plt
-import matplotlib
+from fpdf import FPDF
 from stqdm import stqdm
 
 #matplotlib.use("Agg")
@@ -127,7 +127,7 @@ def extract_keyword(Text, num=50):
 # Visualize Keuyword with WorldCloud
 def visual_WordCould(Text):
     mask = np.array(Image.open('data/mask.jpg'))
-    mywordcould = WordCloud(background_color="white", max_words=1000, mask=mask).generate(Text)
+    mywordcould = WordCloud(background_color="black", max_words=500, mask=mask).generate(Text)
     img_color = ImageColorGenerator(mask)
     fig = plt.figure(figsize=(20, 10))
     plt.imshow(mywordcould.recolor(color_func=img_color), interpolation='bilinear')
@@ -345,20 +345,20 @@ def main():
                 # Confusion Matrix
                 tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
                 accuracy = (tp + tn) / (tp + fp + tn + fn)*100
-                precision = (tp) / (tp + fp)*100
-                recall = (tp) / (tp + fn)*100
-                f1_scores = (2 * precision * recall) / (precision + recall)
+                # precision = (tp) / (tp + fp)*100
+                # recall = (tp) / (tp + fn)*100
+                # f1_scores = (2 * precision * recall) / (precision + recall)
                 predicted_label = np.append(predicted_label, y_pred)
                 actual_label = np.append(actual_label, y_true)
-                #plot_conf_metrics(y_true, y_pred)
+                
 
                 y_pred = enc.inverse_transform(y_pred)
                 sum_accuracy += accuracy
                 fold_i += 1
                 acc.append(accuracy)
-                pr.append(precision)
-                rc.append(recall)
-                f1.append(f1_scores)
+                # pr.append(precision)
+                # rc.append(recall)
+                # f1.append(f1_scores)
                 #cm_result.append(cm)
             
             with open("output/MKNN_prediction.txt", "w") as f:
@@ -380,22 +380,24 @@ def main():
             text_test = text_test.join(knn_pred)
             text_test = text_test.join(jarak_pred)
             text_test = text_test.join(index_pred)
-            #text_test['Predict_label'] = text_test['Predict_label'].apply(lambda x: 'Positive' if x == 1 else 'Negative')
+            
             text_test = text_test.dropna()
             st.dataframe(text_test)
-            st.session_state['text_test'] = text_test
+            # st.session_state['text_test'] = text_test
             new_frame = pd.DataFrame(X_test)
             new_frame = new_frame.join(knn_pred)
 
             avg_acc = sum_accuracy/fold_n
             maxs = max(acc)
             mins = min(acc)
-            res_df = pd.DataFrame({'K Fold':fol, 'Accuracy': acc, 'Precison':pr, 'Recall':rc, 'f1 score':f1})
+            # res_df = pd.DataFrame({'K Fold':fol, 'Accuracy': acc, 'Precison':pr, 'Recall':rc, 'f1 score':f1})
+            res_df = pd.DataFrame({'K Fold':fol, 'Accuracy': acc})
             st.table(res_df)
             st.write("Avearge accuracy : ", str("%.4f" % avg_acc)+'%')
             st.write("Max Score : ",str(maxs),"in Fold : ", str(acc.index(maxs)+1))
             st.write("Min Score : ",str(mins), "in Fold : ", str(acc.index(mins)+1))
-            st.line_chart(res_df,x='K Fold', y=['Accuracy', 'Precison', 'Recall', 'f1 score'])
+            # st.line_chart(res_df,x='K Fold', y=['Accuracy', 'Precison', 'Recall', 'f1 score'])
+            st.line_chart(res_df,x='K Fold', y=['Accuracy'])
             #[['Accuracy', 'Precison', 'Recall', 'f1 score']]
             plot_confusion_matrix(predicted_label, actual_label)
             
@@ -413,9 +415,9 @@ def main():
             sentiment = new_df['Sentiment'].value_counts()
             sentiment = pd.DataFrame({'Sentiment': sentiment.index, 'Tweets': sentiment.values})
             select = st.sidebar.selectbox("Visual of Tweets Sentiment", ['Histogram', 'Wordcloud', 'Pie Chart'],
-                                            key=0)
+                                            key=1)
             if select == "Wordcloud":
-                ch = st.sidebar.selectbox("Sentiment", ("Positive, Negative"))
+                ch = st.sidebar.selectbox("Sentiment", ("Positive", "Negative"))
                 if ch == 'Positive':
                     pos_list = new_df[new_df['Sentiment'] == 'Positive']['text'].tolist()
                     pos_docx = ' '.join(pos_list)
@@ -435,6 +437,5 @@ def main():
             else:
                 fig = px.pie(sentiment, values='Tweets', names='Sentiment')
                 st.plotly_chart(fig)
-
 if __name__ == "__main__":
     main()
