@@ -35,6 +35,7 @@ import base64
 import time
 from datetime import datetime
 
+import nltk
 nltk.download('punkt')
 
 
