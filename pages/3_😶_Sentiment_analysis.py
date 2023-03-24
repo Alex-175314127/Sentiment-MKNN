@@ -35,6 +35,8 @@ import base64
 import time
 from datetime import datetime
 
+nltk.download('punkt')
+
 
 ### SENTIMENT ANALYSIS ###
 def Sentiment_analysis(df: pd.DataFrame()):
