@@ -345,9 +345,9 @@ def main():
                 # Confusion Matrix
                 tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
                 accuracy = (tp + tn) / (tp + fp + tn + fn)*100
-                # precision = (tp) / (tp + fp)*100
-                # recall = (tp) / (tp + fn)*100
-                # f1_scores = (2 * precision * recall) / (precision + recall)
+                precision = (tp) / (tp + fp)*100
+                recall = (tp) / (tp + fn)*100
+                f1_scores = (2 * precision * recall) / (precision + recall)
                 predicted_label = np.append(predicted_label, y_pred)
                 actual_label = np.append(actual_label, y_true)
                 
@@ -356,9 +356,9 @@ def main():
                 sum_accuracy += accuracy
                 fold_i += 1
                 acc.append(accuracy)
-                # pr.append(precision)
-                # rc.append(recall)
-                # f1.append(f1_scores)
+                pr.append(precision)
+                rc.append(recall)
+                f1.append(f1_scores)
                 #cm_result.append(cm)
             
             with open("output/MKNN_prediction.txt", "w") as f:
@@ -390,14 +390,14 @@ def main():
             avg_acc = sum_accuracy/fold_n
             maxs = max(acc)
             mins = min(acc)
-            # res_df = pd.DataFrame({'K Fold':fol, 'Accuracy': acc, 'Precison':pr, 'Recall':rc, 'f1 score':f1})
-            res_df = pd.DataFrame({'K Fold':fol, 'Accuracy': acc})
+            res_df = pd.DataFrame({'K Fold':fol, 'Accuracy': acc, 'Precison':pr, 'Recall':rc, 'f1 score':f1})
+            # res_df = pd.DataFrame({'K Fold':fol, 'Accuracy': acc})
             st.table(res_df)
             st.write("Avearge accuracy : ", str("%.4f" % avg_acc)+'%')
             st.write("Max Score : ",str(maxs),"in Fold : ", str(acc.index(maxs)+1))
             st.write("Min Score : ",str(mins), "in Fold : ", str(acc.index(mins)+1))
-            # st.line_chart(res_df,x='K Fold', y=['Accuracy', 'Precison', 'Recall', 'f1 score'])
-            st.line_chart(res_df,x='K Fold', y=['Accuracy'])
+            st.line_chart(res_df,x='K Fold', y=['Accuracy', 'Precison', 'Recall', 'f1 score'])
+            # st.line_chart(res_df,x='K Fold', y=['Accuracy'])
             #[['Accuracy', 'Precison', 'Recall', 'f1 score']]
             plot_confusion_matrix(predicted_label, actual_label)
             
