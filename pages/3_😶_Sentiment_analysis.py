@@ -38,6 +38,7 @@ from datetime import datetime
 import nltk
 nltk.download('punkt')
 nltk.download('stopwords')
+nltk.download('vader_lexicon')
 
 
 ### SENTIMENT ANALYSIS ###
