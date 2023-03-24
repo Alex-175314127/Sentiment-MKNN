@@ -37,6 +37,7 @@ from datetime import datetime
 
 import nltk
 nltk.download('punkt')
+nltk.download('stopwords')
 
 
 ### SENTIMENT ANALYSIS ###
